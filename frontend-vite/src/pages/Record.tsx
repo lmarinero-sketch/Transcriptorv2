@@ -394,10 +394,11 @@ export default function RecordPage() {
       setChunkCount(0);
       setLiveTranscript([]);
 
-      // Acquire Wake Lock
-      await acquireWakeLock();
-
+      // Start timer FIRST (before wake lock which can hang on iOS)
       timerRef.current = setInterval(() => setTimer((t) => t + 1), 1000);
+
+      // Acquire Wake Lock (fire-and-forget — never block recording)
+      acquireWakeLock().catch(() => {});
     } catch (err: any) {
       console.error('[Recording] Error:', err);
       if (err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError') {
