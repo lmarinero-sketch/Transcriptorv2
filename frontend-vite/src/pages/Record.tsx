@@ -312,21 +312,54 @@ export default function RecordPage() {
   };
 
   const startRecording = async () => {
+    // ── Pre-flight checks for mobile compatibility ──
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setError("Tu navegador no soporta grabación de audio. Usá Safari en iPhone o Chrome en Android.");
+      return;
+    }
+    if (typeof MediaRecorder === 'undefined') {
+      setError("MediaRecorder no disponible. En iPhone, usá Safari (no Chrome). En Android, actualizá Chrome.");
+      return;
+    }
+    if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+      setError("La grabación requiere HTTPS. Accede desde https:// para grabar.");
+      return;
+    }
+
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Request microphone — this triggers the iOS/Android permission prompt
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        } 
+      });
       streamRef.current = stream;
 
-      const audioCtx = new AudioContext();
+      // AudioContext — must be created/resumed from a user gesture on iOS
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      if (audioCtx.state === 'suspended') {
+        await audioCtx.resume();
+      }
       const source = audioCtx.createMediaStreamSource(stream);
       const analyser = audioCtx.createAnalyser();
       analyser.fftSize = 256;
       source.connect(analyser);
       analyserRef.current = analyser;
 
-      // Main recorder (full audio — keeps recording the entire session as backup)
+      // Main recorder (full audio)
       const mimeType = getSupportedMimeType();
       const recorderOpts: MediaRecorderOptions = mimeType ? { mimeType } : {};
-      const recorder = new MediaRecorder(stream, recorderOpts);
+      
+      let recorder: MediaRecorder;
+      try {
+        recorder = new MediaRecorder(stream, recorderOpts);
+      } catch (e) {
+        // Fallback: try without options
+        recorder = new MediaRecorder(stream);
+      }
+      
       chunksRef.current = [];
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) chunksRef.current.push(e.data);
@@ -337,17 +370,18 @@ export default function RecordPage() {
         setAudioBlob(blob);
         stream.getTracks().forEach((t) => t.stop());
       };
-      // Use 5s timeslice for main recorder (less memory pressure for long meetings)
+      
+      // Use 5s timeslice for main recorder
       recorder.start(5000);
       mediaRecorder.current = recorder;
 
-      // Live transcription recorder — will be stopped/restarted every 15s by the loop
+      // Live transcription recorder
       restartLiveRecorder();
 
       // Start the self-scheduling live transcription loop
       startLiveLoop();
 
-      // Clear any recovered transcript since we're starting fresh
+      // Clear any recovered transcript
       clearPersistedTranscript();
       setRecoveredTranscript(null);
 
@@ -360,13 +394,19 @@ export default function RecordPage() {
       setChunkCount(0);
       setLiveTranscript([]);
 
-      // Acquire Wake Lock to keep screen on and process alive
+      // Acquire Wake Lock
       await acquireWakeLock();
 
       timerRef.current = setInterval(() => setTimer((t) => t + 1), 1000);
     } catch (err: any) {
       console.error('[Recording] Error:', err);
-      setError(err?.message || "No se pudo acceder al micrófono. Verifica los permisos y que estés en HTTPS.");
+      if (err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError') {
+        setError("Permiso de micrófono denegado. Abrí Configuración > Safari > Micrófono y permitilo para este sitio.");
+      } else if (err?.name === 'NotFoundError') {
+        setError("No se encontró micrófono. Verificá que tu dispositivo tenga micrófono disponible.");
+      } else {
+        setError(err?.message || "Error al iniciar la grabación. Intentá con Safari en iPhone.");
+      }
     }
   };
 
