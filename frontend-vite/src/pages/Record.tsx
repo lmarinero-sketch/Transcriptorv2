@@ -13,6 +13,21 @@ import { transcribeAudio, transcribeChunk, analyzeText, generatePresentation, ge
 
 type InputMode = "record" | "upload";
 
+// Helper: detect the best supported audio mimeType for this browser
+function getSupportedMimeType(): string {
+  const candidates = [
+    'audio/webm;codecs=opus',
+    'audio/webm',
+    'audio/mp4',
+    'audio/ogg;codecs=opus',
+    'audio/ogg',
+  ];
+  for (const mime of candidates) {
+    if (MediaRecorder.isTypeSupported(mime)) return mime;
+  }
+  return ''; // fallback: let browser choose
+}
+
 export default function RecordPage() {
   const { refreshUsage } = useAuth();
   const [mode, setMode] = useState<InputMode>("record");
@@ -221,7 +236,9 @@ export default function RecordPage() {
     const stream = streamRef.current;
     if (!stream) return;
 
-    const lr = new MediaRecorder(stream, { mimeType: "audio/webm;codecs=opus" });
+    const mimeType = getSupportedMimeType();
+    const opts: MediaRecorderOptions = mimeType ? { mimeType } : {};
+    const lr = new MediaRecorder(stream, opts);
     lr.start(); // No timeslice — we manually stop it each cycle
     liveRecorderRef.current = lr;
   }, []);
@@ -307,13 +324,16 @@ export default function RecordPage() {
       analyserRef.current = analyser;
 
       // Main recorder (full audio — keeps recording the entire session as backup)
-      const recorder = new MediaRecorder(stream, { mimeType: "audio/webm;codecs=opus" });
+      const mimeType = getSupportedMimeType();
+      const recorderOpts: MediaRecorderOptions = mimeType ? { mimeType } : {};
+      const recorder = new MediaRecorder(stream, recorderOpts);
       chunksRef.current = [];
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) chunksRef.current.push(e.data);
       };
       recorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+        const blobType = mimeType || 'audio/webm';
+        const blob = new Blob(chunksRef.current, { type: blobType });
         setAudioBlob(blob);
         stream.getTracks().forEach((t) => t.stop());
       };
@@ -344,8 +364,9 @@ export default function RecordPage() {
       await acquireWakeLock();
 
       timerRef.current = setInterval(() => setTimer((t) => t + 1), 1000);
-    } catch {
-      setError("No se pudo acceder al micrófono. Verifica los permisos.");
+    } catch (err: any) {
+      console.error('[Recording] Error:', err);
+      setError(err?.message || "No se pudo acceder al micrófono. Verifica los permisos y que estés en HTTPS.");
     }
   };
 
