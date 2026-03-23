@@ -1,0 +1,25 @@
+# === Grow Labs ===
+
+## Backend
+.env
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+## Frontend
+node_modules/
+.next/
+.env.local
+.env*.local
+
+## IDE
+.vscode/
+.idea/
+
+## OS
+.DS_Store
+Thumbs.db
+
+## Data (local dev fallback)
+backend/data/meetings.json
