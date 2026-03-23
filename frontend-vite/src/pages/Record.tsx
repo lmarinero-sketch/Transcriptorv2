@@ -50,6 +50,58 @@ export default function RecordPage() {
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animationRef = useRef<number | null>(null);
 
+  // Wake Lock — prevents screen from turning off during recording
+  const wakeLockRef = useRef<WakeLockSentinel | null>(null);
+  const silentAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  const acquireWakeLock = useCallback(async () => {
+    // 1. Try Screen Wake Lock API
+    try {
+      if ('wakeLock' in navigator) {
+        wakeLockRef.current = await (navigator as any).wakeLock.request('screen');
+        wakeLockRef.current?.addEventListener('release', () => {
+          console.log('[WakeLock] Released');
+        });
+        console.log('[WakeLock] Acquired');
+      }
+    } catch (e) {
+      console.warn('[WakeLock] Failed:', e);
+    }
+
+    // 2. Silent audio trick — keeps browser process alive on iOS/Android
+    try {
+      const audio = new Audio();
+      // Generate a tiny silent WAV in base64
+      audio.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
+      audio.loop = true;
+      audio.volume = 0.01;
+      await audio.play();
+      silentAudioRef.current = audio;
+    } catch (e) {
+      console.warn('[SilentAudio] Failed:', e);
+    }
+  }, []);
+
+  const releaseWakeLock = useCallback(() => {
+    wakeLockRef.current?.release();
+    wakeLockRef.current = null;
+    if (silentAudioRef.current) {
+      silentAudioRef.current.pause();
+      silentAudioRef.current = null;
+    }
+  }, []);
+
+  // Re-acquire wake lock when page becomes visible again (e.g. switching apps)
+  useEffect(() => {
+    const handleVisibility = async () => {
+      if (document.visibilityState === 'visible' && isRecording && !isPaused) {
+        await acquireWakeLock();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [isRecording, isPaused, acquireWakeLock]);
+
   const hasAudio = mode === "record" ? (!!audioBlob || liveTranscript.length > 0) : !!uploadedFile;
 
   // Auto-scroll transcript log (only if user is near bottom)
@@ -288,6 +340,9 @@ export default function RecordPage() {
       setChunkCount(0);
       setLiveTranscript([]);
 
+      // Acquire Wake Lock to keep screen on and process alive
+      await acquireWakeLock();
+
       timerRef.current = setInterval(() => setTimer((t) => t + 1), 1000);
     } catch {
       setError("No se pudo acceder al micrófono. Verifica los permisos.");
@@ -320,6 +375,9 @@ export default function RecordPage() {
     setIsPaused(false);
     if (timerRef.current) clearInterval(timerRef.current);
     setWaveformBars(new Array(32).fill(4));
+
+    // Release Wake Lock
+    releaseWakeLock();
   };
 
   const formatTimer = (s: number) => {

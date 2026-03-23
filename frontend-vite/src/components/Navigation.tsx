@@ -2,142 +2,75 @@
 import { Link } from "react-router-dom";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import { Home, Mic, Upload, Clock, Gem, LogOut } from "lucide-react";
 
 export default function Navigation() {
   const location = useLocation();
   const pathname = location.pathname;
-  const { user, usage, logout } = useAuth();
+  const { user, logout } = useAuth();
 
   const links = [
-    { href: "/", label: "Inicio", icon: "🏠" },
-    { href: "/record", label: "Grabar", icon: "🎙️" },
-    { href: "/upload", label: "Subir Audio", icon: "📁" },
-    { href: "/history", label: "Historial", icon: "📋" },
-    { href: "/planes", label: "Planes", icon: "💎" },
+    { href: "/", label: "Inicio", icon: Home },
+    { href: "/record", label: "Grabar", icon: Mic },
+    { href: "/upload", label: "Subir Audio", icon: Upload },
+    { href: "/history", label: "Historial", icon: Clock },
+    { href: "/planes", label: "Planes", icon: Gem },
   ];
 
-  const usagePct = usage?.usage_percentage ?? 0;
-  const barColor = usagePct > 90 ? "#DC2626" : usagePct > 70 ? "#D97706" : "var(--color-sanatorio-secondary)";
-
   return (
-    <nav className="navbar glass-panel sticky top-0 z-50 transition-all duration-300">
-      <div className="max-w-7xl mx-auto flex items-center justify-between h-16 px-4">
-        <Link to="/" className="flex items-center gap-2 text-sanatorio-primary hover:text-sanatorio-secondary transition-colors font-bold font-display text-lg">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-sanatorio-primary to-sanatorio-secondary flex items-center justify-center text-white shadow-md">
-            🏥
-          </div>
-          <span>Sanatorio Argentino</span>
-        </Link>
-
-        <div className="hidden md:flex items-center gap-1 bg-white/50 p-1 rounded-full border border-slate-200">
-          {links.map((link) => (
-            <Link
-              key={link.href}
-              to={link.href}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 flex items-center gap-2 ${
-                pathname === link.href
-                  ? "bg-white text-sanatorio-primary shadow-sm"
-                  : "text-slate-600 hover:text-sanatorio-primary hover:bg-white/50"
-              }`}
-            >
-              <span>{link.icon}</span>
-              {link.label}
-            </Link>
-          ))}
-        </div>
-
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          {/* Usage bar */}
-          {usage && (
-            <Link to="/planes" style={{ textDecoration: "none" }}>
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "6px 12px",
-              borderRadius: 20,
-              background: "rgba(255,255,255,0.8)",
-              border: "1px solid var(--border-medium)",
-              fontSize: 12,
-              cursor: "pointer",
-              transition: "all 0.3s ease",
-              boxShadow: "var(--shadow-sm)",
-            }}>
-              <span style={{
-                fontSize: "0.6rem",
-                fontWeight: 800,
-                padding: "2px 6px",
-                borderRadius: 6,
-                background: usagePct > 90 ? "#FEE2E2" : "var(--bg-emerald-soft)",
-                color: usagePct > 90 ? "#DC2626" : "var(--color-sanatorio-primary)",
-                textTransform: "uppercase",
-                letterSpacing: "0.05em",
-              }}>
-                {usage.plan}
-              </span>
-              <div style={{
-                width: 50,
-                height: 6,
-                borderRadius: 3,
-                background: "var(--border-light)",
-                overflow: "hidden",
-              }}>
-                <div style={{
-                  width: `${Math.min(100, usagePct)}%`,
-                  height: "100%",
-                  borderRadius: 3,
-                  background: barColor,
-                  transition: "width 0.5s ease",
-                }} />
-              </div>
-              <span style={{ color: "var(--text-secondary)", fontFamily: "JetBrains Mono, monospace" }}>
-                {usage.audio_minutes_used.toFixed(0)}/{usage.audio_minutes_limit}
-              </span>
-            </div>
-            </Link>
-          )}
-
-          <Link to="/record" className="btn-primary" style={{ padding: "8px 16px", fontSize: "0.85rem", gap: "6px" }}>
-            <span>⚡</span>
-            Nueva Reunión
+    <>
+      {/* ═══ FLOATING GLASS NAVBAR (Desktop + Mobile) ═══ */}
+      <header className="sticky top-0 z-[9999] w-full px-2 sm:px-4 py-2 sm:py-3">
+        <div className="max-w-7xl mx-auto bg-white/85 backdrop-blur-xl rounded-2xl md:rounded-3xl px-3 sm:px-4 md:px-6 py-2.5 sm:py-3 flex items-center justify-between shadow-[0_4px_24px_rgba(0,0,0,0.04)] border border-white/60 transition-all duration-300">
+          
+          {/* Logo */}
+          <Link to="/" className="flex items-center gap-2 sm:gap-3 group shrink-0">
+            <img
+              src="/logosanatorio.png"
+              alt="Sanatorio Argentino"
+              className="h-8 sm:h-10 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
+            />
+            <span className="font-display font-bold text-slate-700 text-[15px] sm:text-lg group-hover:text-sanatorio-primary transition-colors hidden sm:block">
+              Inicio
+            </span>
           </Link>
 
-          {/* User menu */}
-          {user && (
-            <button
-              onClick={logout}
-              title={user.email}
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: "50%",
-                border: "1px solid var(--border-medium)",
-                background: "var(--bg-white)",
-                color: "var(--text-secondary)",
-                cursor: "pointer",
-                fontSize: 14,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                transition: "all 0.3s ease",
-                boxShadow: "var(--shadow-sm)",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = "#FCA5A5";
-                e.currentTarget.style.color = "#DC2626";
-                e.currentTarget.style.background = "#FEF2F2";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = "var(--border-medium)";
-                e.currentTarget.style.color = "var(--text-secondary)";
-                e.currentTarget.style.background = "var(--bg-white)";
-              }}
-            >
-              ⏻
-            </button>
-          )}
+          {/* Links — scrollable en mobile */}
+          <div className="flex items-center gap-0.5 sm:gap-1 overflow-x-auto scrollbar-hide mx-2 sm:mx-4 flex-1 justify-center">
+            {links.map((link) => {
+              const Icon = link.icon;
+              const isActive = pathname === link.href;
+              return (
+                <Link
+                  key={link.href}
+                  to={link.href}
+                  className={`flex items-center gap-1 sm:gap-2 px-2.5 sm:px-4 py-2 rounded-xl text-[12px] sm:text-sm font-bold whitespace-nowrap transition-all duration-200 ${
+                    isActive
+                      ? "text-sanatorio-primary bg-[#00548B]/5"
+                      : "text-slate-500 hover:text-sanatorio-primary hover:bg-[#00548B]/5"
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  <span className="hidden md:inline">{link.label}</span>
+                </Link>
+              );
+            })}
+          </div>
+
+          {/* Right side — Logout */}
+          <div className="flex items-center gap-2 shrink-0">
+            {user && (
+              <button
+                onClick={logout}
+                className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-slate-100 text-slate-500 hover:bg-red-50 hover:text-red-600 rounded-xl font-bold text-[12px] sm:text-sm transition-all"
+              >
+                <LogOut className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Salir</span>
+              </button>
+            )}
+          </div>
         </div>
-      </div>
-    </nav>
+      </header>
+    </>
   );
 }

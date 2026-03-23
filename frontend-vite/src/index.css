@@ -21,6 +21,16 @@
   .label-text {
     @apply block text-sm font-bold text-slate-500 uppercase tracking-wider mb-2 ml-1;
   }
+  .glass-panel {
+    @apply bg-white/85 backdrop-blur-xl shadow-[0_4px_24px_rgba(0,0,0,0.04)] border border-white/60;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 :root {
@@ -117,7 +127,7 @@ body::before {
   position: fixed;
   inset: 0;
   z-index: -1;
-  background-image: url('https://calidad.sanatorioargentino.com.ar/SANARG2021_fondo%20de%20pantalla.jpg');
+  background-image: url('/SANARG2021_fondo de pantalla.jpg');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
