@@ -11,7 +11,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-EXPOSE 8000
-
 # Railway sets PORT dynamically; fall back to 8000 for local dev
-CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
+ENV PORT=8000
+EXPOSE ${PORT}
+
+CMD ["/bin/sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port $PORT"]
+
